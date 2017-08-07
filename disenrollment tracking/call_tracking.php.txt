@@ -1,0 +1,661 @@
+<?php
+
+
+header( 'Expires: Sat, 26 Jul 1997 05:00:00 GMT' );
+header( 'Last-Modified: ' . gmdate( 'D, d M Y H:i:s' ) . ' GMT' );
+header( 'Cache-Control: no-store, no-cache, must-revalidate' );
+header( 'Cache-Control: post-check=0, pre-check=0', false );
+header( 'Pragma: no-cache' );
+
+error_reporting(E_ERROR);
+ini_set('display_errors',true);
+
+require "dblib.php";
+
+$page="dis_enroll";
+
+$patient_id=$_GET['pid'];
+$dis_month=$_GET['mon'];
+$market=$_GET['market'];
+//$reasonCatId=$_GET['dis_reason'];
+//$comments=$_GET['comments'];
+
+$callresults=getCallResults($patient_id, $dis_month);	
+	
+$resCatReason=explode("$",$callresults["cate"]);
+$reasonCatId=$resCatReason[0];
+$rec = $callresults["recovery"];
+$rep = $callresults["rep"];
+$ref = $callresults["ref"];
+$tour = $callresults["tour"];
+$appt = $callresults["appt"];
+$enroll = $callresults["enroll"];
+$comments=$callresults['comments'];
+$issues=$callresults['issues'];
+$primary=$callresults['primary'];
+
+$new_center=$callresults['center'];
+$new_ins=$callresults['ins'];
+$new_plan=$callresults['plan'];
+
+
+		
+//$rec=$_GET['rec'];
+//$rep=$_GET['rep'];
+//$ref=$_GET['ref'];
+//$tour=$_GET['tour'];
+//$appt=$_GET['appt'];
+//$enroll=$_GET['enroll'];
+
+
+$dis_key = $patient_id."_".$dis_month;
+#require '../configuration.php';
+
+
+#$username = $_SESSION['login_user'];
+#$pass=!is_null($_SESSION['pages_allow'][$page]) ? true : false;
+
+#if($pass)
+#{
+#	echo "";
+	
+#}else{
+
+#   header("Location: http://$baseURL/?keyword=$page");
+#}
+
+
+
+ $dash= mysql_connect("10.0.201.15", "jingl", "nfZazMp63yu") or die("Could not connect: " . mysql_error());
+
+
+?>
+
+<HTML>
+<HEAD>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<title>Disenrollment Tracking Call Results</title>
+<link href="//netdna.bootstrapcdn.com/bootswatch/2.3.2/cerulean/bootstrap.min.css" rel="stylesheet">
+<script src="http://bitools/resources/js/jquery.js"></script>
+<script src="http://bitools/resources/js/general.js"></script>
+<link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
+<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
+<script src="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.3/jquery.dataTables.min.js"></script>
+<link rel="stylesheet" href="http://bitools/resources/css/select2.css" />
+<script src="http://bitools/resources/js/thickbox.js"></script>
+<script src="http://bitools/resources/js/select2.js"></script>
+<style type="text/css" media="all">
+   @import "http://bitools/resources/css/thickbox.css";
+</style>
+<link rel="stylesheet" href="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.3/css/jquery.dataTables.css" type="text/css" />
+<script type='text/javascript'>
+$(document).ready(function() {
+	
+	$(".selectvalues, #primary_issue, #new_center,#new_ins,#new_plan").select2();
+	
+	$(".AlertDOS").datepicker({dateFormat: 'yy-mm-dd'});
+	
+	$(".des").hide();
+	
+	 var selected =  $('#dis_reasons').find(':selected').val(), container = $('#c' + selected);
+	   // container.find(":checkbox").prop("checked",false);
+	    //container.find('select option:selected').prop("selected",false);
+	   // container.find('select[value=0]').prop("selected",true);
+	    //alert(selected);
+	    $(".des").hide();
+	    container.show(); 
+	
+	 $('#dis_reasons').change(function(){
+		    var selected = $(this).find(':selected').val(), container = $('#c' + selected), c = $(this).parents('form');
+		    c.find(".des :checkbox").prop("checked",false);
+		    c.find('.des select option:selected').prop("selected",false);
+		    c.find('.des select[value=0]').prop("selected",true);
+		   // alert(container);
+		    $(".des").hide();
+		    container.show(); 
+	  	});
+	
+	
+	$('.selectvalues').change(function(){
+   		 
+   		 var sel = $(this);
+   		 //var value = sel.options[sel.selectedIndex].value;  
+   		 
+   		 var value = sel.find(':selected').val();
+       
+        
+   		 //alert(value);
+   		 if(value !=0)
+   		 {
+   		 	$(this).prev().prop('checked', true);
+   		 }
+   		 else{
+   		 	$(this).prev().prop('checked', false);
+   		 }
+	});
+		
+	$('.subissues').click(function(){
+		
+		if($(this).is(':checked'))
+		{
+			$(this).parents('.allissues').find('.issues').prop('checked',true);
+		}
+		else{
+			var allsub=$(this).parent().find('input:checked');
+			if(allsub.length==0)
+			{
+				$(this).parents('.allissues').find('.issues').prop('checked',false);
+			}
+		}
+		
+	});
+
+	
+	});
+
+function addNewItem()
+{
+	var newItem = $("#new_item").val();
+	//alert(newItem);
+	var appData = "<option selected value='"+newItem+"'> "+newItem+" </option>";
+	//alert(appData);
+	$("#new_center").prepend(appData);
+}
+
+function addNewIns()
+{
+	var newItem = $("#new_item_ins").val();
+	//alert(newItem);
+	var appData = "<option selected value='"+newItem+"'> "+newItem+" </option>";
+	//alert(appData);
+	$("#new_ins").prepend(appData);
+}
+
+function addNewPlan()
+{
+	var newItem = $("#new_item_plan").val();
+	//alert(newItem);
+	var appData = "<option selected value='"+newItem+"'> "+newItem+" </option>";
+	//alert(appData);
+	$("#new_plan").prepend(appData);
+}
+
+
+</script>
+<style type="text/css">
+#filters td
+{
+	padding:10px;
+}
+#filters input
+{
+	margin-left:10px;
+}
+.right
+{
+	text-align:right;
+}
+body
+{
+width:1200px;
+}
+table{width:1200px;font-size:13px;}
+.comment
+{
+width:290px;
+}
+.smallinput
+{
+width:50px;
+}
+.red
+{
+background-color: #CC9999;
+}
+.green
+{
+background-color: #bfffbf;
+}
+
+#filters{
+background:#eee;border:1px solid #bbb;
+margin:5px;padding:2px;
+}
+table{width:380px;margin:50px;text-align:left;}
+table td{border:1px solid #ccc;}
+
+.tableContainer input {
+	
+height: 25px;
+width: 130px;
+
+}
+
+.tableContainer td {
+	border:none;
+}
+.allissues
+{
+	margin-left: 50px;
+}
+.des{
+	width:940px;
+	background-color: #F0F0F0;
+}
+
+hr{
+	margin: 15px 0 !important;
+	border: 0;
+	border-top: 1px solid #E0E0E0 !important;
+	border-bottom: 1px solid #E0E0E0 !important;
+	
+}
+
+</style>
+</HEAD>
+<BODY>
+	<h3>Disenrollment Tracking Call Results</h3>
+	
+<?php
+if($_POST['enter']==1)
+{
+	// print "saved";
+	// exit;
+							
+					$dis_reasons = isset($_POST['dis_reasons'])? $_POST['dis_reasons']:null;
+					$selectKey = "primary_issue_".$dis_reasons;
+					
+					
+					
+					if($dis_reasons<>"" && $_POST[$selectKey] =="")
+					{
+						print "<span style='color:red;'>Error: the Primary Issue is requred!</span><br/>";
+					}
+					else{
+					$recovery = isset($_POST['recovery'])? $_POST['recovery']:null;
+					$represen = isset($_POST['rep'])? $_POST['rep']:null;
+					$refer = isset($_POST['ref'])? $_POST['ref']:null;
+					$tour = isset($_POST['tour'])? $_POST['tour']:null;
+					$appt = isset($_POST['appt'])? $_POST['appt']:null;
+					$enroll = isset($_POST['enroll'])? $_POST['enroll']:null;
+					$dis_comments = isset($_POST['dis_comments'])? $_POST['dis_comments']:null;
+					
+					$new_center = isset($_POST['new_center'])? $_POST['new_center']:null;
+					$new_ins = isset($_POST['new_ins'])? $_POST['new_ins']:null;
+					$new_plan = isset($_POST['new_plan'])? $_POST['new_plan']:null;
+					
+					$issues = isset($_POST['issues'])? $_POST['issues']:null;
+					$subissues = isset($_POST['subissues'])? $_POST['subissues']:null;
+					
+					
+				
+					if(!empty($issues)&&!empty($subissues))
+					{
+						$allIssues = array_merge($issues, $subissues);
+					}
+					if(!empty($issues)&&empty($subissues))
+					{
+						$allIssues = $issues;
+					}
+					if(empty($issues)&&!empty($subissues))
+					{
+						$allIssues = $subissues;
+					}
+					
+					saveMainData($patient_id, $dis_month, $market,$dis_reasons,$dis_comments,$recovery,$represen,$refer,$tour,$appt,$enroll,$_POST[$selectKey],$new_center,$new_ins,$new_plan);
+					//print_r($allIssues);
+				
+				
+					saveIssues($dis_key, $allIssues);
+				
+					
+					print "<p style='font-size: 18px;'>Data Saved</p>";
+
+					}
+
+	
+	
+	print "<a href='call_tracking.php?pid=$patient_id&mon=$dis_month&market=$market&dis_reason=".$resCatReason[0]."&rec=$rec&rep=$rep&ref=$ref&tour=$tour&appt=$appt&enroll=$enroll&comments=".$callresults['comments']."&issues=".$callresults['issues']."'>Return</a>";
+	//print "<a href='call_tracking.php?pid=$patient_id&mon=$dis_month&market=$market&dis_reason=$reasonCatId&rec=$recovery&rep=$represen&ref=$refer&tour=$tour&appt=$appt&enroll=$enroll&comments=$dis_comments&issues=".$callresults['issues']."'>Return</a>";
+
+}
+else{
+	
+?>
+<form name='call_results' id='call_results' method='POST' style="font-size:18px;">
+<div>
+<?php
+
+$cat_list = array();
+$issues_list = array();
+$sub_issues_list = array();
+$parent_issues = array();
+$primary_issues=array();
+
+
+
+
+
+
+
+$query = "SELECT * FROM BIDW.disenrollment_category where parent_cat_id is not null order by CATEGORY_DESC desc;";
+
+$result=mysql_query($query,$dash) or die(mysql_error());
+
+print "<p style='margin-bottom: 30px;'>Select Disenrollment Reason Category
+		<select name='dis_reasons' id='dis_reasons'>
+		<option></option>";			
+		
+		
+while ($row=mysql_fetch_array($result)) 
+{
+	//print $reasonCatId."<br/>".$row["ID"];
+	print "<option value='".$row["ID"]."' ".($reasonCatId==$row["ID"]?'SELECTED':'').">".$row["CATEGORY_DESC"]."</option>";
+	
+	$cat_list[$row["ID"]]=$row["CATEGORY_DESC"];
+}
+
+
+print "</select></p>";		
+
+
+$query = "SELECT ID, ISSUE_DESC, DIS_CATEGORY_ID, 
+			CASE WHEN PARENT_ISSUE_ID IS NULL OR PARENT_ISSUE_ID ='' THEN 0 ELSE PARENT_ISSUE_ID END AS PARENT_ISSUE_ID,
+			CASE WHEN DROPDOWN_DASH_SOURCE IS NULL OR DROPDOWN_DASH_SOURCE ='' THEN 'NO' ELSE DROPDOWN_DASH_SOURCE END AS  DROPDOWN_DASH_SOURCE
+			FROM BIDW.disenrollment_issues i
+			order by DIS_CATEGORY_ID";
+
+$result=mysql_query($query,$dash) or die(mysql_error());
+
+while ($row=mysql_fetch_array($result)) 
+{
+	
+	$issues_list[$row["DIS_CATEGORY_ID"]][$row["ID"]] = $row["PARENT_ISSUE_ID"]."_".$row["ISSUE_DESC"]."_".$row["DROPDOWN_DASH_SOURCE"];
+	
+	if($row["PARENT_ISSUE_ID"] <> 0)
+	{
+
+		array_push($parent_issues, $row["PARENT_ISSUE_ID"]);
+		$sub_issues_list[$row["PARENT_ISSUE_ID"]][$row["ID"]]=$row["ISSUE_DESC"]."_".$row["DROPDOWN_DASH_SOURCE"];
+	}
+	else
+	{
+		array_push($parent_issues, $row["ID"]);
+		
+		if(!isset($primary_issues[$row["DIS_CATEGORY_ID"]])){
+					
+				$primary_issues[$row["DIS_CATEGORY_ID"]]= array();
+				
+		}
+		
+			array_push($primary_issues[$row["DIS_CATEGORY_ID"]], $row["ID"]."_".$row["ISSUE_DESC"]);
+		
+		
+	}
+}
+
+
+ksort($cat_list);
+ksort($issues_list);
+ksort($sub_issues_list);
+
+//print_r($issues_list);
+
+$dropdownAr = array();
+$issuesIDAr = array();
+
+ //print_r($primary_issues);
+
+
+foreach(explode("@",$issues) as $data)
+{
+	$subdata=explode ("|",$data);
+	$issuesAr=explode("$",$subdata[0]);
+	
+	array_push($issuesIDAr, $issuesAr[0]);
+	array_push($dropdownAr, $subdata[1]);
+}
+foreach($cat_list as $cat_id => $cat_desc)
+{
+	//print_r($primary_issues[$cat_id]);
+	print "<div id='c".$cat_id."' class='des' style='font-weight: bold;'><br/><h4>".$cat_desc."</h4> <br/>";
+	
+	print "<table style='width:600px;margin: 0px;line-height: 40px;font-size: 18px;font-weight: bold;' id='PrimTable' class='tableContainer'>";
+	
+	print "<tr><td>Select the Primary Issue<span style='color:red;'>(* Required)</span>: </td><td><select name='primary_issue_$cat_id' id='primary_issue_$cat_id' ><option value='0'></option>";
+	
+	foreach($primary_issues[$cat_id] as $priissue)
+	{
+		$issuedata=explode("_",$priissue);
+		print "<option value='".$issuedata[0]."'".($primary==$issuedata[0]?'SELECTED':'').">".$issuedata[1]."</option>";
+	}
+	
+	print "</select></td></tr>";
+	
+	print "</table>";
+	print "<hr>";
+	
+	foreach($issues_list[$cat_id] as $key => $data)
+	{
+		//print $data."<br/>";
+			 $array =explode('_',$data);
+		
+			if($array[0] == 0) // parent issue
+			{
+				 //print $array[2]."<br/>";
+						
+				
+				//print_r($parent_issues);
+				if (in_array($key, $parent_issues))
+				{
+					if(in_array($key, $issuesIDAr))
+					{
+						print "<div class='allissues'><input  type='checkbox' class='issues' name='issues[]' value='".$key."' checked> ".$array[1];
+					}else{
+						print "<div class='allissues'><input  type='checkbox' class='issues' name='issues[]' value='".$key."'> ".$array[1];
+					}
+					
+					
+					if($array[2] <> 'NO')
+					{
+						//print $array[2]."<br/>";
+						$typearray = explode('_',$array[2]);
+						$dropdownvalues=getDropdownList($typearray[0]);
+						
+						$divid=rand(1, 10000000);
+						$divid="select".$divid;
+						
+						print " <select id='$divid' onchange=\"addDisDropDownValue('$dis_key', this)\" style='font-size: 12px;width: 200px;height: 25px;' name='$typearray[0]_selectvalues[]' class='selectvalues'><option value='0'></option>";
+					
+						foreach($dropdownvalues as $dropdowndata)
+						{
+							$dropdowndataarray = explode("_",$dropdowndata);
+							
+							 $option = $key."_".$dropdowndata;
+							 
+							 //print_r($dropdownAr);
+							
+							if(in_array($option, $dropdownAr))
+							{
+								  print "<option value='".$option."' selected>" . $dropdowndataarray[0] . "</option>";
+							}
+							else {
+								 print "<option value='".$option."'>" . $dropdowndataarray[0] . "</option>";
+							}
+							
+							
+						}
+						
+						print "</select>";
+					}
+					
+					
+					print " &nbsp;<div style='margin-left:30px;font-size: 15px;font-weight: normal;line-height: 30px;'>";
+					
+					foreach($sub_issues_list[$key] as $sub_key => $sub_data)
+					{
+						$sub_array =explode('_',$sub_data);
+												
+						if($sub_array[1] <> 'NO')
+						{
+							if(in_array($sub_key, $issuesIDAr))
+							{
+								print "<input type='checkbox' name='subissues[]' class='subissues' value='".$sub_key. "' checked>" . $sub_array[0] ;
+							}else{
+								print "<input type='checkbox' name='subissues[]' class='subissues' value='".$sub_key. "'>" . $sub_array[0] ;
+							}
+							
+							$subtypearray = explode('_',$sub_array[1]);
+							$subdropdownvalues=getDropdownList($subtypearray[0]);
+							
+								$divid=rand(1, 10000000);
+								$divid="select".$divid;
+							print " <select id='$divid' onchange=\"addDisDropDownValue('$dis_key', this)\" style='font-size: 12px;width: 200px;height: 25px;' name='$subtypearray[0]_selectvalues[]' class='selectvalues'><option value='0'></option>";
+						
+							foreach($subdropdownvalues as $subdropdowndata)
+							{
+								$subdropdowndataarray = explode("_",$subdropdowndata);
+								
+								 $option = $sub_key."_".$subdropdowndata;
+								 
+								if(in_array($option, $dropdownAr))
+								{
+									  print "<option value='".$option."' selected>" . $subdropdowndataarray[0] . "</option>";
+								}
+								else {
+									 print "<option value='".$option."'>" . $subdropdowndataarray[0] . "</option>";
+								}
+								
+								
+							}
+							
+							print "</select><br/>";
+						}
+						else {
+							if(in_array($sub_key, $issuesIDAr))
+							{
+								print "<input type='checkbox' name='subissues[]' class='subissues' value='".$sub_key. "' checked>" . $sub_array[0] ."<br/>";
+							}
+							else{
+								print "<input type='checkbox' name='subissues[]' class='subissues' value='".$sub_key. "'>" . $sub_array[0] ."<br/>";
+							}
+							
+						}
+						
+						
+					}
+					
+					print "</div></div><br/><hr>";
+				}
+				else
+				{
+					if(in_array($key, $issuesIDAr))
+					{
+						print "<div class='allissues'><input type='checkbox' name='issues[]' class='issues' value='".$key."' checked> ".$array[1]."</div><br/><hr>";
+					}else{
+						print "<div class='allissues'><input type='checkbox' name='issues[]' class='issues' value='".$key."'> ".$array[1]."</div><br/><hr>";
+					}
+					
+					
+				}
+				
+			} 
+	}
+	print "</div>";
+}
+
+
+$query = "SELECT distinct new_medical_center FROM BIDW.disenrollment_tracking order by 1";
+
+$result=mysql_query($query,$dash) or die(mysql_error());
+
+
+print "<table style='width:1000px;margin: 0px;line-height: 40px;font-size: 18px;font-weight: bold;' id='newTable' class='tableContainer'>";
+	
+print "<tr><td><h4>New Center Switched: </h4></td> <td><h4>New Insurance Switched: </h4></td><td><h4>New Plan Switched: </h4></td>";
+
+print "<tr><td><select name='new_center' id='new_center'><option></option>";
+while ($row=mysql_fetch_array($result)) 
+{
+
+	print "<option value='".$row["new_medical_center"]."' ".($new_center==$row["new_medical_center"]?'SELECTED':'').">".$row["new_medical_center"]."</option>";
+	
+}
+
+print "</select></td>";
+
+
+$query = "SELECT distinct new_insurance FROM BIDW.disenrollment_tracking order by 1";
+
+$result=mysql_query($query,$dash) or die(mysql_error());
+
+print "<td><select name='new_ins' id='new_ins'><option></option>";
+
+while ($row=mysql_fetch_array($result)) 
+{
+
+	print "<option value='".$row["new_insurance"]."' ".($new_ins==$row["new_insurance"]?'SELECTED':'').">".$row["new_insurance"]."</option>";
+	
+}
+
+print "</select></td>";
+
+$query = "SELECT distinct new_ins_plan FROM BIDW.disenrollment_tracking order by 1";
+
+$result=mysql_query($query,$dash) or die(mysql_error());
+
+print "<td><select name='new_plan' id='new_plan'><option></option>";
+
+while ($row=mysql_fetch_array($result)) 
+{
+
+	print "<option value='".$row["new_ins_plan"]."' ".($new_plan==$row["new_ins_plan"]?'SELECTED':'').">".$row["new_ins_plan"]."</option>";
+	
+}
+
+
+print "</select></td>";
+
+
+print "</tr>";
+
+
+#3rd row
+print "<tr><td><input type='button' id='add_new' style='margin-top: 5px;' onclick='addNewItem()' class='btn btn-small btn-primary' value='Add New Item'><br/>
+		<input id='new_item' type='text' style='height: 30px;margin: auto;width: 220px;margin-top: 5px;' class='input-small' name='new_item'/></td>";
+
+print "<td><input type='button' id='add_ins' style='margin-top: 5px;' onclick='addNewIns()' class='btn btn-small btn-primary' value='Add New Item'><br/>
+		<input id='new_item_ins' type='text' style='height: 30px;margin: auto;width: 220px;margin-top: 5px;' class='input-small' name='new_item_ins'/></td>";
+
+print "<td><input type='button' id='add_new'  style='margin-top: 5px;' onclick='addNewPlan()' class='btn btn-small btn-primary' value='Add New Item'><br/>
+		<input id='new_item_plan' type='text' style='height: 30px;margin: auto;width: 220px;margin-top: 5px;' class='input-small' name='new_item_plan'/></td></tr>";
+print "</table><br/><hr/>";
+
+$id = rand(1, 10000000);
+print "<h4>Recovery Information</h4> <br/>";
+print "<table style='width:750px;margin: 0px;line-height: 40px;font-size: 18px;font-weight: bold;' id='recTable' class='tableContainer'>";
+print "<tr><td>Recovery Date: </td><td><input id='re$id' type='text'  class='AlertDOS input-small' name='recovery' value='$rec' /></td>";
+print "<td>Representative Name: </td><td><input id='rep$id' type='text' class='input-small' name='rep' value='$rep' /></td></tr>";
+print "<tr><td>Reference Num: </td><td><input id='ref$id' type='text' class='input-small' name='ref' value='$ref'/>  </td>";
+print "<td>Tour Date: </td><td><input id='t$id' type='text' class='AlertDOS input-small' name='tour' value='$tour'/>  </td></tr>";
+print "<tr><td>Appointment Date: </td><td><input id='a$id' type='text' class='AlertDOS input-small' name='appt' value='$appt'/>  </td>";
+print "<td>Re-Enrollment Date: </td><td><input id='en$id' type='text' class='AlertDOS input-small' name='enroll' value='$enroll'/> </td></tr>";
+print "</table><hr/>";
+
+print "<h4>General Comments</h4> <br/><textarea rows='5' cols='700' name='dis_comments' style='width: 900px;'>$comments</textarea><br/>";
+	
+?>
+
+
+
+<br/>
+<input type="submit" class="btn-large btn-inverse" value="Enter"/>	
+<input type="hidden" name="enter" value="1"/>
+</div>
+
+</form>
+<?php 
+}
+?>
+</body>
+</html>

@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<?php
+header( 'Expires: Sat, 26 Jul 1997 05:00:00 GMT' );
+header( 'Last-Modified: ' . gmdate( 'D, d M Y H:i:s' ) . ' GMT' );
+header( 'Cache-Control: no-store, no-cache, must-revalidate' );
+header( 'Cache-Control: post-check=0, pre-check=0', false );
+header( 'Pragma: no-cache' );
+
+require '../configuration.php';
+require("dblib.php");
+
+
+ $dash= mysql_connect("10.0.201.15", "jingl", "nfZazMp63yu") or die("Could not connect: " . mysql_error());
+
+ $markets=explode("-",strtoupper($_GET['market']));
+
+$market = $markets[0];
+
+if(strlen($market)<1)
+{
+	$market="FL";
+}
+
+if($market=="FL")
+{
+	$page="dis_enroll";
+}
+else
+{
+	$page="dis_enroll_".strtolower($_GET['market']);
+}
+
+
+
+
+
+
+$active_page="Mgt Tool";
+
+$market_title["FL"]="Chen";
+$market_title["VA"]="Virginia";
+$market_title["KY"]="Kentucky";
+$market_title["LA"]="Louisiana";
+$market_title["GA"]="Georgia";
+$market_title["IL"]="Illinois";
+
+
+$username = $_SESSION['login_user'];
+$pass=!is_null($_SESSION['pages_allow'][$page]) ? true : false;
+
+if($pass)
+{
+
+	
+}else{
+
+   header("Location: http://$baseURL/?keyword=$page");
+}
+
+
+
+$startD=$_GET['startD'];	
+
+
+
+if($_GET['excel']==1)
+{
+	$mrpad="'";
+    $filename ="excelreport.xls";    
+    header('Content-type: application/ms-excel');
+    header('Content-Disposition: attachment; filename='.$filename);   
+}
+else
+{
+
+?>
+<html lang="en">
+<HEAD>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<title>Disenrollment Tracking Tool</title>
+<script src="http://bitools/resources/js/jquery.js"></script>
+<link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
+<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
+<script src="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.3/jquery.dataTables.min.js"></script>
+<link href="//netdna.bootstrapcdn.com/bootswatch/2.3.1/cerulean/bootstrap.min.css" rel="stylesheet">
+<script src="http://bitools/resources/js/general.js"></script>
+<link rel="stylesheet" href="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.3/css/jquery.dataTables.css" type="text/css" />
+<link rel="stylesheet" href="http://bitools/resources/css/select2.css" />
+<script src="http://bitools/resources/js/thickbox.js"></script>
+<script src="http://bitools/assets/js/plugins/fancybox/jquery.fancybox.pack.js"></script>
+<script src='http://bitools/resources/js/expander.js'></script>
+<script src="http://bitools/resources/js/select2.js"></script>
+<style type="text/css" media="all">
+   @import "http://bitools/assets/css/fancybox/jquery.fancybox.css";
+</style>
+<style type="text/css" media="all">
+                @import "http://bitools/resources/css/thickbox.css";
+</style>
+<script>
+    $(document).ready(function() {
+    
+    	
+    	
+    //close popup
+	$("#close").click(function(){
+	$("#dialog").fadeOut(500);
+	});
+    
+    $(".CompliantDOS").datepicker({dateFormat: 'yy-mm-dd'});
+	$("#endD").datepicker({dateFormat: 'yy-mm-dd'});
+	$("#startD").datepicker({dateFormat: 'yy-mm'});
+	$(".toggleSC").click(function(){
+		$('.scorecard').toggle();
+		return false;
+	});	
+	$("#office,#pcp,#measurement,#insurance").select2();
+		
+	$('#data td').expander({
+	  slicePoint: 30,
+	  widow: 2,
+	  expandEffect: 'show',
+	  expandText: 'Read More',
+	  userCollapseText: 'Read Less'
+	});
+	
+	$('a.fancybox').fancybox();
+	
+	 $(".fancybox").fancybox({
+            type: 'iframe',
+            afterClose: function () { // USE THIS IT IS YOUR ANSWER THE KEY WORD IS "afterClose"
+                parent.location.reload(true);
+            }
+        });
+	
+	$("#startD ").change(function()
+	{
+		var chartName=$("#startD :selected").val();
+		if(chartName !="")
+		{
+			$("#pickMonth").submit();
+		}
+				
+	});
+	
+  });
+  
+  
+   function closeDiag(id)
+	{
+		$("#"+id).fadeOut(500);
+		
+	}
+  
+  	function openDiag(id)
+	{
+		$("#"+id).fadeIn(1000);
+		positionPopup(id);
+	}
+	
+	function positionPopup(id){
+	if(!$("#"+id).is(':visible')){
+	return;
+	}
+	$("#"+id).css({
+	left: ($(window).width() - $("#"+id).width()) /1.5,
+	position:'absolute'
+	});
+	}
+    </script>
+<style type="text/css">
+
+.total{
+	background-color: rgb(248,203,173) !important;
+font-weight: bold !important;
+
+}
+
+.grandtotal{
+	background-color: rgb(91,155,213) !important;
+	font-weight: bold !important;
+	color:white;
+}
+
+#filters td
+{
+	padding:10px;
+}
+.comment
+{
+vertical-align:top;
+}
+#filters input
+{
+	margin-left:10px;
+}
+.right
+{
+	text-align:right;
+}
+body
+{
+padding:4px;
+overflow-x: scroll !important;
+}
+table{width:1090px;
+font-size:13px;
+}
+.table td{
+	text-align: center;
+	vertical-align: middle;
+}
+.smallinput
+{
+width:50px;
+}
+.grey td
+{
+background-color: #ccc;
+}
+.red td
+{
+background-color: #CC9999;
+}
+.yellow td
+{
+background-color: #FCF6CF;
+}
+.main{margin:20px;}
+#totalCnt{font-weight:bold;}
+hr
+{
+	border-top: 3px solid #f5f5f5;
+	border-bottom: 3px solid #fff;
+}
+
+.dialog{
+	position: absolute;
+	border: 5px solid gray;
+	padding: 10px;
+	background: white;
+	width: 900px;
+	height: 500px;
+	overflow: scroll;
+	}
+	.OpenDialog{
+	display: block;
+	width: 65px;
+	text-align: center;
+	padding: 6px;
+	border-radius: 5px;
+	text-decoration: none;
+	margin: 0 auto;
+	}
+.topheader{
+	
+	font-weight: bold;
+	font-size: 18px;
+}
+.office{
+	background-color: rgb(189,215,238) !important;
+	font-weight: bold;
+}
+</style>
+</HEAD>
+<BODY>
+
+<img src="<?php echo $logo_url;?>">
+<div class="main">
+	<h4>Disenrollment Summary Report</h4>
+	<form id='pickMonth'>
+	<table id="filters">
+	<tr>
+	<td >Disenrollment Month<input type="text" id="startD" name="startD" value="<?php echo $startD<>''?$startD:date("Y-m",strtotime("-1 Months")) ;?>" />
+	</td>	
+	</tr>
+	</table>
+
+	<?php
+
+	 $url=$_SERVER["REQUEST_URI"]."&excel=1";
+	
+		print "<p><a href='".$url."'>Print to Excel</a></p>";
+
+	
+
+	?>
+	<hr/>
+	<input type="hidden" name="enter" value="1"/>
+	</form>
+	
+	
+	<br/>
+	<?php
+	}
+
+$reasonsAr = array();
+$officeAr = array();
+$patDataAr = array();
+$grandtotalAr = array();
+
+		//print "<p id='totalCnt'></p><br/>";
+	
+		
+		if(strlen($startD)>0)
+		{
+			$dismonth = "'".$startD."'";
+		}
+		else {
+			$startD=date("Y-m",strtotime("-1 Months"));
+			$dismonth ="LEFT(DATE_SUB(DATE(current_date()), INTERVAL 1 MONTH), 7)";
+		}
+	
+		
+		$sql = "	SELECT distinct i.ISSUE_DESC as reason
+					FROM BIDW.disenrollment_issues i 
+					where i.PARENT_ISSUE_ID is null
+					order by i.ISSUE_DESC";
+	
+		$result=mysql_query($sql, $dash) or die(mysql_error());	
+		while ($row = mysql_fetch_assoc($result))
+		{
+			array_push($reasonsAr, $row['reason']);
+		}
+		
+		
+		/*$sql = "SELECT distinct p.state, 
+			(CASE WHEN o.office_name IS NULL THEN 'No Office' when o.office_name like '%test%' THEN 'No Office' when o.office_name like '%off%site%' THEN 'No Office' else o.OFFICE_CODE end) as office_name
+			 FROM DASHBOARD_PROD.OFFICE o 
+			join DASHBOARD_PROD.PRACTICE p on p.PRACTICE_ID = o.PRACTICE_ID
+			where COMPANY_ID in (10001,10002) and o.active =1
+			and  o.office_name not like '%special%' and  o.office_name not like '%Admin%' ";*/
+			
+		$sql="select replace(state, '_', '-') as state, 
+				office_name from (
+				SELECT distinct (case when s.practice_code is null and p.STATE = 'fl' then 'FL_N' 
+				when s.practice_code is null and p.STATE = 'IL' then 'IL'
+				when s.practice_code is null and p.STATE = 'VA' then 'VA_RM' ELSE  s.practice_code END) AS state,
+				(CASE WHEN o.office_name IS NULL THEN 'No Office' when o.office_name like '%test%' THEN 'No Office' else o.OFFICE_CODE end) as office_name
+				FROM DASHBOARD_PROD.OFFICE o 
+				join DASHBOARD_PROD.PRACTICE p on p.PRACTICE_ID = o.PRACTICE_ID
+				left join BIDW.office_market_split s on s.office_id = o.OFFICE_ID
+				where COMPANY_ID in (10001,10002) and o.active =1
+				and  o.office_name not like '%special%' and  o.office_name not like '%Admin%') as pop";
+					
+		$result=mysql_query($sql, $dash) or die(mysql_error());	
+		while ($row = mysql_fetch_assoc($result))
+		{
+			if(!isset($officeAr[$row['state']]))
+			{
+				$officeAr[$row['state']] = array();
+			}
+		
+			array_push($officeAr[$row['state']], $row['office_name']);
+			//array_push($officeAr[$row['state']], "TOTAL");
+		}
+		
+		
+	/*	$sql = "SELECT 
+				(case when reason is null and market is null and office_name is null then 'all_total' else reason end) as  reason, 
+				(case when reason is not null and market is null and office_name is null then 'reason_total'
+				when reason is null and market is null and office_name is null then 'all_total' else market end) as  market,
+				(CASE WHEN office_name IS NULL AND REASON IS NOT NULL AND MARKET IS NOT NULL THEN 'TOTAL' 
+				when reason is not null and market is null and office_name is null then 'reason_total' 
+				when reason is null and market is null and office_name is null then 'all_total' ELSE office_name END) as  office_name,
+				cnt
+				FROM(
+				select reason, market, office_name, sum(cnt) AS cnt
+				from(
+				select 
+				   issue_desc as reason,
+				    office_name,market,
+				    count(distinct DASH_PATIENT_ID) as cnt
+				from
+				    (SELECT 
+				        DIS_MONTH,
+				            (case
+				                when DASH_PRACTICE_ID = 10001 then 'FL'
+				                when DASH_PRACTICE_ID = 10002 then 'LA'
+				                when DASH_PRACTICE_ID = 10003 then 'IL'
+				                when DASH_PRACTICE_ID = 10004 then 'KY'
+				                when DASH_PRACTICE_ID = 10005 then 'GA'
+				                when DASH_PRACTICE_ID = 10009 then 'VA'
+				                ELSE ''
+				            END) as market,
+				            (CASE
+				                WHEN o.office_name IS NULL THEN 'No Office'
+				                when o.office_name like '%test%' THEN 'No Office'
+				                else o.OFFICE_CODE
+				            end) as office_name,
+				            DASH_PATIENT_ID,
+				            i.issue_desc
+				          
+				    FROM
+				      BIDW.disenrollment_issue_lines l
+				    join BIDW.disenrollment_tracking t ON t.dis_key = l.TRACKING_DIS_KEY
+				    join BIDW.disenrollment_issues i ON i.id = l.issue_id
+				    join BIDW.disenrollment_category c ON c.id = t.DIS_CATEGORY_ID
+				    join DASHBOARD_PROD.PATIENT p ON p.patient_id = t.dash_patient_id
+				        and p.ACTIVE = 1
+				    left join DASHBOARD_PROD.OFFICE o ON o.office_id = p.OFFICE_ID
+				    where
+				        i.parent_issue_id is null 
+				            and DIS_MONTH = $dismonth  ) as pop
+				group by 1,2,3
+				) as pop 
+				group by 1,2,3 with rollup
+				) AS P";*/
+				
+		$sql = "SELECT 
+				(case when reason is null and market is null and office_name is null then 'all_total' else reason end) as  reason, 
+				(case when reason is not null and market is null and office_name is null then 'reason_total'
+				when reason is null and market is null and office_name is null then 'all_total' else market end) as  market,
+				(CASE WHEN office_name IS NULL AND REASON IS NOT NULL AND MARKET IS NOT NULL THEN 'TOTAL' 
+				when reason is not null and market is null and office_name is null then 'reason_total' 
+				when reason is null and market is null and office_name is null then 'all_total' ELSE office_name END) as  office_name,
+				cnt
+				FROM(
+				select reason, market, office_name, sum(cnt) AS cnt
+				from(
+				select 
+				   issue_desc as reason,
+				    office_name,market,
+				    count(distinct DASH_PATIENT_ID) as cnt
+				from
+				    (SELECT 
+					DIS_MONTH,
+					(case when s.practice_code is null and p.STATE = 'fl' then 'FL-N' 
+					when s.practice_code is null and p.STATE = 'IL' then 'IL'
+					when s.practice_code is null and p.STATE = 'VA' then 'VA-RM' ELSE  replace(s.practice_code, '_', '-') END) as market,
+					(CASE
+						WHEN o.office_name IS NULL THEN 'No Office'
+						when o.office_name like '%test%' THEN 'No Office'
+						else o.OFFICE_CODE
+					end) as office_name,
+					DASH_PATIENT_ID,
+					i.issue_desc
+					FROM
+					BIDW.disenrollment_issue_lines l
+					join BIDW.disenrollment_tracking t ON t.dis_key = l.TRACKING_DIS_KEY
+					join BIDW.disenrollment_issues i ON i.id = l.issue_id
+					join BIDW.disenrollment_category c ON c.id = t.DIS_CATEGORY_ID and c.parent_cat_id is not null
+					join DASHBOARD_PROD.PATIENT p ON p.patient_id = t.dash_patient_id
+					left join BIDW.office_market_split s on s.office_id = p.OFFICE_ID
+					and p.ACTIVE = 1
+					left join DASHBOARD_PROD.OFFICE o ON o.office_id = p.OFFICE_ID
+					where i.parent_issue_id is null and DIS_MONTH = $dismonth  ) as pop
+				group by 1,2,3
+				) as pop 
+				group by 1,2,3 with rollup
+				) AS P";
+				
+					
+		$result=mysql_query($sql, $dash) or die(mysql_error());	
+		
+		while ($row = mysql_fetch_assoc($result))
+		{
+			if(!isset($patDataAr[$row['reason'].'_'.$row['market'].'_'.$row['office_name']]))
+			{
+				$patDataAr[$row['reason'].'_'.$row['market'].'_'.$row['office_name']] = array();
+			}
+		
+			array_push($patDataAr[$row['reason'].'_'.$row['market'].'_'.$row['office_name']], $row['cnt']);
+		}
+		
+		
+		//print_r($patDataAr);
+		
+		$marketkeys = array_keys($officeAr);
+		
+		//print_R($officeAr);
+		$officehtml="<tr class='office'>";
+		
+		print "<table class='table table-bordered table-condensed table-striped' style=''>";
+		print "<tr class='success'><td class='topheader' rowspan='2'>Parent_Issues</td>";
+		foreach($marketkeys as $marketkey)
+		{
+			$cnt = 0;
+			foreach($officeAr[$marketkey] as $office)
+			{
+				$officehtml .= "<td>$office</td>";
+				
+				$cnt++;
+			}
+			//$officehtml .= "<td></td>";//-----
+			print "<td colspan='$cnt'  class='topheader'>$marketkey</td>";
+			print "<td rowspan='2' class='total'>Total</td>";//total header-----
+		}
+		print "<td class='grandtotal' rowspan='2'>Grand Total</td></tr>";
+		
+		$officehtml .="</tr>";
+		print $officehtml;
+		
+		$grandtotalhtml="";
+		
+		
+		
+		foreach($reasonsAr as $reason)
+		{
+			print "<tr><td>$reason</td>";
+			
+			foreach($officeAr as $market => $offices)
+			{
+				//$markets=explode("-", $markets);
+				//$market=$markets[0];
+				
+				foreach($offices as $office)
+				{
+					 if(!isset($grandtotalAr[$reason.'_'.$market.'_'.$office]))
+					 {
+					 	$grandtotalAr[$market.'_'.$office] +=$patDataAr[$reason.'_'.$market.'_'.$office][0];
+					 }
+					print "<td style='font-size: 16px  !important;'><a href='/disenrollment_tracking/index.php?market=$market&officecode=$office&reason=$reason&startD=$startD&enter=1' target='blank'>".$patDataAr[$reason.'_'.$market.'_'.$office][0]."</a></td>";
+					
+				}				
+				print "<td style='font-size: 16px !important;' class='total'><a  href='/disenrollment_tracking/index.php?market=$market&reason=$reason&startD=$startD&enter=1' target='blank'>".$patDataAr[$reason.'_'.$market.'_'.'TOTAL'][0]."</a></td>";//---total number------
+				
+				$grandtotalAr[$market.'_'.'TOTAL'] +=$patDataAr[$reason.'_'.$market.'_'.'TOTAL'][0];
+			}
+			
+			print "<td style='font-size: 16px  !important;' class='grandtotal'>".$patDataAr[$reason.'_'.'reason_total'.'_'.'reason_total'][0]."</td></tr>";
+		}
+			
+		
+		foreach($officeAr as $key => $datas)
+		{
+			
+			foreach($datas as $data)
+			{
+				
+				 $grandtotalhtml .="<td style='font-size: 16px  !important;' class='grandtotal' >".$grandtotalAr[$key.'_'.$data]."</td>";
+			}
+			
+			$grandtotalhtml.="<td style='font-size: 16px  !important;' class='total'>".$grandtotalAr[$key.'_'.'TOTAL']."</td>";
+		}
+
+		
+		print "<tr><td class='grandtotal'>Grand Total</td>".$grandtotalhtml."<td style='font-size: 16px  !important;' class='grandtotal'>".$patDataAr['all_total_all_total_all_total'][0]."</td></tr>";
+	   print "</table>";
+		
+		
+			$now=time();
+			
+			
+	
+					
+
+		$cnt=0;
+	
+
+	?>
+</div>
+</BODY>
+<?php
+if($_GET['excel']!=1)
+{
+?>
+<script type="text/javascript">
+	$(document).ready(function() {
+		$("#market").change(function()
+		{
+			var md=$("#market option:selected").val();
+			 window.location="?market="+md;
+		});
+		
+		//$('#totalCnt').html('<?php print "Total Result Count: ".$cnt;?>');
+		
+		$('#data').dataTable(
+		{
+			"aoColumnDefs": [
+			{ "bSearchable": false, "aTargets": [0,1,2,5,6,7,8] }
+			] ,
+			"iDisplayLength": 200,
+			"bFilter": false,
+			"bInfo": false		   
+		}
+		);		
+	} );
+</script>
+<?php
+}
+?>
+</HTML>

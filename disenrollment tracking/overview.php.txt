@@ -1,0 +1,125 @@
+<?php
+$db2=mysql_connect("localhost", "root", "chen1234") or die("Could not connect: " . mysql_error());
+$conn=mysql_select_db("hedis",$db2)  or die("Could not connect: " . mysql_error());
+
+require("dblib.php");
+
+$pcp=$_GET['pcp'];	
+
+?>
+<HTML>
+<HEAD>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<link rel='stylesheet' href='../resources/css/tables.css' type='text/css' media='screen' />
+<style type="text/css">
+td
+{
+	padding:0px;margin:0px;
+}
+.right
+{
+	text-align:right;
+}
+body
+{
+width:1100px;
+}
+table{width:500px;font-size:11px;}
+.comment
+{
+width:290px;
+}
+.num
+{
+text-align:right;
+}
+</style>
+</HEAD>
+<BODY>
+<h2><?php print $pcp;?> HEDIS Overview</h2>
+<hr/>
+<?php
+
+	$filter="";
+	if(strlen($pcp)>0)
+	{
+		$filter.=" and  pcp = '".$pcp."'";
+	}	
+	
+	$query="SELECT avg(stars) as stars FROM hedis.overview 
+	where 1=1 ".$filter;
+	
+	$result=mysql_query($query,$db2);	
+	$row=mysql_fetch_array($result);
+	
+	$starVal=intval($row['stars']);
+	
+	$stars="";
+		
+	for($a=1;$a <= $starVal ;$a++)
+	{
+		$stars.='<img  src="http://192.168.2.13/images/star-on.png"/>';		
+	}
+	for($a;$a<=5;$a++)
+	{
+		$stars.='<img  src="http://192.168.2.13/images/star-off.png"/>';
+	}
+	print "<h4>Overall Score is:".$stars."</h4>";
+	
+	
+	$query="SELECT o.measure,m.measure_long,sum(compliant) as comp,sum(eligible) as elig,
+floor((sum(compliant)/sum(eligible)*100)+.5) as comp_perc,d.descp,
+avg(stars) as stars, (SELECT floor((AVG(stars))+.5) FROM hedis.overview oo where oo.measure=o.measure) as chen_stars
+FROM hedis.overview o JOIN hedis.measures m ON (m.measure=o.measure)
+left JOIN (SELECT measure,group_concat(short_desc separator '<br/>') as descp FROM hedis.dictionary group by 1) d 
+ON (o.measure=d.measure)
+where 1=1 ".$filter."
+group by 1,2 order by 1";
+
+	$result=mysql_query($query,$db2);	
+	print "<table id='box-table-a'>
+	<thead>
+	<tr>
+		<th>Measure</th><th>Compliant %</th><th>HEDIS Stars</th><th>ChenMed Avg</th><th>Measure Description</th>
+	</tr>
+	</thead>";
+	
+	while ($row=mysql_fetch_array($result)) 
+	{
+		$starVal=intval($row['stars']);
+	
+		$stars="";
+		
+		for($a=1;$a <= $starVal ;$a++)
+		{
+			$stars.='<img src="http://192.168.2.13/images/sstar-on.png"/>';		
+		}
+		for($a;$a<=5;$a++)
+		{
+			$stars.='<img src="http://192.168.2.13/images/sstar-off.png"/>';
+		}
+		
+		$starVal=intval($row['chen_stars']);
+	
+		$starsChen="";
+		
+		for($a=1;$a <= $starVal ;$a++)
+		{
+			$starsChen.='<img src="http://192.168.2.13/images/sstar-on-blue.png"/>';		
+		}
+		for($a;$a<=5;$a++)
+		{
+			$starsChen.='<img src="http://192.168.2.13/images/sstar-off-blue.png"/>';
+		}
+		
+		print "<tr>
+			<td><a target='_blank' href='index.php?pcp=".$pcp."&enter=1&measurement=".$row['measure']."'>".$row['measure_long']."</a></td><td class='num'>".$row['comp_perc']."%</td><td>".$stars."</td>
+			<td class='avg'>".$starsChen."</td><td>".$row['descp']."</td>
+			</tr>";
+	}
+	
+	print "</table>";
+
+?>
+</BODY>
+</HTML>

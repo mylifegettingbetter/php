@@ -1,0 +1,1008 @@
+<?php
+// $db=mysql_connect("192.168.20.153", "root", "chen1234") or die("Could not connect: " . mysql_error());
+$dashDB= mysql_connect("10.0.201.15", "jingl", "nfZazMp63yu") or die("Could not connect: " . mysql_error());
+
+
+$comments = array();
+$compliantAr = array();
+$validAr = array();
+$extraColumnAr = array();
+$callResultsAR = array();
+$callDataAr = array();
+
+
+function saveMainData($patient_id, $dis_month, $market,$dis_reasons,$dis_comments,$recovery,$represen,$refer,$tour,$appt,$enroll, $primary,$new_center,$new_ins,$new_plan)
+{
+	global $dashDB;	
+	
+	if($market =='FL')
+	{
+		$market = "10001";
+	}
+	if($market =='LA')
+	{
+		$market = "10002";
+	}
+	if($market =='KY')
+	{
+		$market = "10004";
+	}
+	if($market =='GA')
+	{
+		$market = "10005";
+	}
+	if($market =='IL')
+	{
+		$market = "10003";
+	}
+	if($market =='VA')
+	{
+		$market = "10009";
+	}
+	$dis_key = $patient_id."_".$dis_month;
+	$sql = "delete FROM BIDW.disenrollment_tracking where dis_key = '".$dis_key."'";
+	mysql_query($sql, $dashDB) or die(mysql_error()); 
+	
+	$dis_comments=utf8_encode(mysql_real_escape_string($dis_comments));
+	
+	$sql= "INSERT INTO BIDW.disenrollment_tracking (DIS_KEY,DIS_CATEGORY_ID, DIS_MONTH, DASH_PATIENT_ID, DASH_PRACTICE_ID, COMMENTS,UPDATED_DATE, 
+	 		RECOVERY_DATE, REP_NAME, REFERENCE_NUM, TOUR_DATE,APPT_DATE, ENROLLMENT_DATE,PRIMARY_ISSUE_ID,NEW_MEDICAL_CENTER,NEW_INSURANCE,NEW_INS_PLAN) 
+			VALUES('$dis_key','$dis_reasons','$dis_month','$patient_id','$market','$dis_comments',NOW(), '$recovery','$represen','$refer','$tour','$appt','$enroll','$primary','$new_center','$new_ins','$new_plan' );";
+			
+	mysql_query($sql, $dashDB) or die(mysql_error());
+
+}
+
+
+function saveIssues($dis_key, $issues)
+{
+	global $dashDB;			
+	
+	print $sql = "select distinct issue_id from BIDW.disenrollment_issue_lines where tracking_dis_key ='$dis_key' ";
+	$result = mysql_query($sql, $dashDB) or die(mysql_error());
+	
+	while ($row = mysql_fetch_assoc($result)) {
+		
+		if (!in_array($row["issue_id"], $issues))
+		{
+			$sql = "delete from BIDW.disenrollment_issue_lines where tracking_dis_key ='$dis_key' and issue_id = ".$row["issue_id"];
+			mysql_query($sql, $dashDB) or die(mysql_error());
+		}
+	}
+	
+	foreach ($issues as $data)
+	{
+		$sql = "select * from BIDW.disenrollment_issue_lines where tracking_dis_key ='$dis_key' and issue_id = $data";
+		$result = mysql_query($sql, $dashDB) or die(mysql_error());
+		
+		if(mysql_num_rows($result)==0)
+		{
+			$data=mysql_real_escape_string($data);
+			 $sql= "INSERT INTO BIDW.disenrollment_issue_lines (TRACKING_DIS_KEY,ISSUE_ID, ISSUE_SELECTION_DATA, ISSUE_SELECTION_DASH_ID,UPDATED_DATE) 
+			VALUES('$dis_key','$data',null,null,NOW());";
+		}
+		
+		mysql_query($sql, $dashDB) or die(mysql_error());
+	}
+	
+	
+}
+
+
+
+function saveDropDown($dis_key, $value)
+{
+	global $dashDB;	
+	
+	
+	$array = explode("_", $value);	
+		
+	
+	$sql = "SELECT * FROM BIDW.disenrollment_issue_lines where tracking_dis_key = '$dis_key'and issue_id = ".$array[0];
+	$result= mysql_query($sql, $dashDB) or die(mysql_error());
+	if(mysql_num_rows($result)==0)
+	{
+		//insert
+		
+		$sql= "INSERT INTO BIDW.disenrollment_issue_lines (TRACKING_DIS_KEY,ISSUE_ID, ISSUE_SELECTION_DATA, ISSUE_SELECTION_DASH_ID,UPDATED_DATE) 
+			VALUES('$dis_key','".$array[0]."','".$array[1]."','".$array[2]."',NOW());";
+		
+		mysql_query($sql, $dashDB) or die(mysql_error());
+		
+	}
+	else {
+		//update
+		
+		$sql= "UPDATE BIDW.disenrollment_issue_lines SET ISSUE_SELECTION_DATA ='".$array[1]."', ISSUE_SELECTION_DASH_ID='".$array[2]."', UPDATED_DATE =NOW() WHERE TRACKING_DIS_KEY = '$dis_key'
+				AND ISSUE_ID = ".$array[0].";";
+		
+		mysql_query($sql, $dashDB) or die(mysql_error());
+	}
+	
+}
+
+function getDropdownList($listname)
+{
+	global $dashDB;	
+	$listvalues =array();
+	
+	if($listname =="STAFF")
+	{
+		$sql="SELECT DISTINCT UPPER(concat(TRIM(U.LAST_NAME), ', ', TRIM(U.FIRST_NAME))) AS listvalue, U.user_id AS DASHID
+				FROM DASHBOARD_PROD.USERS U 
+				JOIN DASHBOARD_PROD.USER_ROLE UR ON U.USER_ID = UR.USER_ID
+				JOIN DASHBOARD_PROD.ROLE R ON R.ROLE_ID = UR.ROLE_ID
+				WHERE U.ACTIVE = 1
+				AND U.LAST_NAME NOT LIKE '%Training%'
+				and U.FIRST_NAME NOT LIKE '%TEST%'
+				AND R.ROLE_NAME NOT LIKE '%ADMIN%'
+				AND R.ROLE_NAME NOT LIKE '%DOCTOR%'
+				AND R.ROLE_NAME NOT LIKE '%BILLER%'
+				AND R.ROLE_NAME NOT LIKE '%CODER%'
+				AND R.ROLE_NAME NOT LIKE '%BILLING%'
+				AND R.ROLE_NAME NOT LIKE '%CODING%'
+				AND R.ROLE_NAME NOT LIKE '%PMR%'
+				AND R.ROLE_NAME NOT LIKE '%EFFICIENCY%'
+				AND U.FIRST_NAME NOT LIKE '%HRA%'
+				AND FIRST_NAME <>'ATC'
+				ORDER BY TRIM(U.LAST_NAME)";
+	}
+	elseif($listname =="PHYSICIAN")
+	{
+		$sql="SELECT distinct upper(concat(last_name, ', ', first_name)) as listvalue, D.DOCTOR_ID AS DASHID
+			FROM DASHBOARD_PROD.DOCTOR D 
+			JOIN DASHBOARD_PROD.PRACTICE P ON P.PRACTICE_ID = D.PRACTICE_ID AND P.COMPANY_ID IN (10001,10002)
+			where D.active = 1 
+			and first_name not like '%test%' AND first_name NOT LIKE '%TRAINING%'
+			order by last_name";
+	}
+	elseif($listname =="PCP")
+	{
+		$sql="SELECT distinct upper(concat(last_name, ', ', first_name)) as listvalue , D.DOCTOR_ID AS DASHID
+			 FROM DASHBOARD_PROD.DOCTOR D 
+			JOIN DASHBOARD_PROD.PRACTICE P ON P.PRACTICE_ID = D.PRACTICE_ID AND P.COMPANY_ID IN (10001,10002)
+			where D.active = 1 and pcp=1
+			and first_name not like '%test%'
+			order by last_name";
+	}
+	elseif($listname =="SPECIALIST")
+	{
+		$sql="SELECT CONCAT(upper(concat(last_name, ', ', first_name)),' (',  SP.SPECIALTY, ')'  ) AS listvalue, D.DOCTOR_ID AS DASHID
+			FROM DASHBOARD_PROD.DOCTOR_SPECIALTY S
+			JOIN DASHBOARD_PROD.DOCTOR D ON D.DOCTOR_ID=S.DOCTOR_ID AND D.ACTIVE=1 
+			JOIN DASHBOARD_PROD.SPECIALTY SP ON SP.SPECIALTY_ID=S.SPECIALTY_ID AND SP.ACTIVE=1
+			JOIN DASHBOARD_PROD.PRACTICE P ON P.PRACTICE_ID = SP.PRACTICE_ID AND P.COMPANY_ID IN (10001,10002)
+			WHERE S.ACTIVE = 1
+			and first_name not like '%test%' AND first_name NOT LIKE '%MEDICAL%'
+			AND SP.SPECIALTY <> 'PCP'";
+	}
+	elseif($listname =="TEST")
+	{
+		$sql="SELECT DISTINCT PROC_DESC as listvalue, PRO.PROC_CODE_ID AS DASHID
+			FROM DASHBOARD_PROD.PROCEDURE_CODES_LK PRO
+			JOIN DASHBOARD_PROD.PRACTICE PRA ON PRA.PRACTICE_ID = PRO.PRACTICE_ID AND PRA.COMPANY_ID IN (10001,10002)
+			WHERE PRO.ACTIVE = 1
+			ORDER BY  PROC_DESC";
+	}
+	elseif($listname =="SPECIALTY")
+	{
+		$sql="SELECT DISTINCT SPECIALTY as listvalue,S.SPECIALTY_ID AS DASHID
+			FROM DASHBOARD_PROD.SPECIALTY S 
+			JOIN DASHBOARD_PROD.PRACTICE P ON P.PRACTICE_ID = S.PRACTICE_ID AND P.COMPANY_ID IN (10001,10002)
+			WHERE S.ACTIVE = 1
+			AND S.SPECIALTY_ID NOT IN (SELECT DISTINCT SPECIALTY_ID FROM DASHBOARD_PROD.SPECIALTY_PROCEDURE)
+			ORDER BY SPECIALTY";
+	}
+	
+	$result = mysql_query($sql, $dashDB);
+	
+	while ($row = mysql_fetch_assoc($result)) {
+		array_push($listvalues, $row['listvalue']."_".$row['DASHID']);	
+	}
+	
+	return $listvalues;
+}
+
+
+
+
+
+function HEDISnavBar($market,$active_page)
+{
+	$all_pages["Mgt Tool"]="/disenrollment_tracking/index.php?market=".$market;
+	$all_pages["Summary"]="/disenrollment_tracking/summary.php";
+	
+		$topMenu='
+		<div class="navbar navbar-inverse">
+			<div class="navbar-inner">
+				<div class="container">
+					<ul class="nav">';
+	foreach($all_pages as $name =>$url)
+	{
+		if($name==$active_page)
+		{
+			$topMenu.='<li class="active">';
+		}
+		else
+		{
+			$topMenu.='<li>';
+		}
+		if($name=="Summary")
+		{
+			$topMenu.='<a href="'.$url.'" id="summary" class="fancybox fancybox.iframe">'.$name.'</a></li>';
+		}
+		else{
+			$topMenu.='<a href="'.$url.'">'.$name.'</a></li>';
+		}
+	
+	}
+	
+	$topMenu.='
+					</ul>
+				</div>
+			</div>
+		</div>
+	<div style="clear:both"></div>';
+		
+	return $topMenu;	
+}
+function internal_log_link($patient_id,$measurement,$elig_yyyy,$market)
+{
+
+	return "<a href='http://bitools/hedis_report/search_internal_log.php?market=$market&patient_id=$patient_id&measure=$measurement&eligYear=$elig_yyyy&enter=1' target='_blank'>view</a>";
+}
+// function getMeasureValue($patient_id,$measurement)
+// {
+	// global $db;
+// 	
+	// return mysql_query("SELECT * FROM main_table where measurement='$measurement' and mrnumber='$patient_id'",$db);		
+// }
+
+function initValidation($patient_id,$measurement,$practice_code)
+{
+	global $validAr;	
+	global $dashDB;	
+	global $eligYear;	
+	
+	$filter="";
+	
+	if(strlen($patient_id)>0)
+	{
+		$filter.=" AND dash_patient_id= $patient_id";
+	}
+	
+	if(strlen($measurement)>0)
+	{
+		$filter.=" AND hedis_measurement_code= '$measurement'";
+	}
+	
+	if(strlen($practice_code)>0)
+	{
+		$filter.=" AND practice_code= '$practice_code'";
+	}
+	
+	$result = mysql_query("SELECT hedis_key,hedis_measurement_override 
+	from BIDW.hedis_measurement_agent_override WHERE hedis_eligible_yyyy='$eligYear' ".$filter,$dashDB);
+	
+	while ($row = mysql_fetch_assoc($result)) {	
+		$validAr[$row['hedis_key']] = $row['hedis_measurement_override'];
+	}
+}
+function initComment() {
+	global $comments;
+	global $dashDB;
+	global $application;
+	
+	 $result = mysql_query("SELECT thread_key, 
+	GROUP_CONCAT(concat('<strong>',date_format(time_stamp, '%Y-%m-%d'), '</strong>:<br/> ', comment,'<br/>') ORDER BY message_id ASC SEPARATOR '<br>') message 
+	FROM BIDW.`messages`
+	where application='$application'
+	group by thread_key",$dashDB);
+	
+	
+	while ($row = mysql_fetch_assoc($result)) {
+	
+		$authorrole = $row['author_role'];
+		$threadkey = strtolower($row['thread_key']);
+		$comment = $row['message'];
+		$comment = preg_replace("/\'/", "&#39;", $comment);
+		$comment = preg_replace("/\"/", "&#34;", $comment);
+		$idmsg = $row['idmsg'];
+		$comments[$threadkey] = $comment;
+	}
+	
+}
+function initCompliant($patient_id,$measurement,$practice_code) {	
+	global $compliantAr;	
+	global $dashDB;	
+	global $eligYear;
+	
+	$filter="";
+	
+	if(strlen($patient_id)>0)
+	{
+		$filter.=" AND dash_patient_id= $patient_id";
+	}
+	
+	if(strlen($measurement)>0)
+	{
+		$filter.=" AND hedis_measurement_code= '$measurement'";
+	}
+	
+	if(strlen($practice_code)>0)
+	{
+		$filter.=" AND practice_code = '".$practice_code."'";
+	}
+	
+	
+	// PRINT "SELECT hedis_key,hedis_Agent_Compliant_Flag,hedis_Agent_Compliant_DOS
+	// from BIDW.hedis_agent_measurement_compliant WHERE hedis_eligible_yyyy='$eligYear' ".$filter;
+
+	$result = mysql_query("SELECT distinct hedis_key,hedis_Agent_Compliant_Flag,hedis_Agent_Compliant_DOS
+	from BIDW.hedis_agent_measurement_compliant WHERE hedis_eligible_yyyy='$eligYear' ".$filter,$dashDB);
+	
+	while ($row = mysql_fetch_assoc($result)) {	
+		$compliantAr[$row['hedis_key']] = $row['hedis_Agent_Compliant_Flag']."|".$row['hedis_Agent_Compliant_DOS'];
+	}
+	
+}
+
+function initExtraColumn()
+{
+	global $extraColumnAr;
+	global $eligYear;
+	global $dashDB;	
+	
+	$curYear = date('Y'); 
+	
+	$result = mysql_query("SELECT distinct hedis_Column_Key, hedis_Column_Name, hedis_Column_Value, dash_Patient_id,hedis_Measurement_Code
+					hedis_eligible_yyyy, hedis_Key from BIDW.hedis_extra_columns WHERE hedis_eligible_yyyy=".$eligYear,$dashDB);
+	
+	while ($row = mysql_fetch_assoc($result)) {	
+		$columnkey = $row['hedis_Column_Key'];
+		$value = $row['hedis_Column_Value'];
+		$extraColumnAr[$columnkey]=$value;
+	}	
+}
+
+function initLabColumn($patient_id,$practice_code,$test_description,$test_name)
+{
+	global $dashDB;
+	global $lab;
+	
+	$curYear = date('Y'); 
+	
+	$filter="";
+	
+	if(strlen($patient_id)>0)
+	{
+		$filter.=" AND dash_patient_id= $patient_id";
+	}
+	
+	if(strlen($practice_code)>0)
+	{
+		$filter.=" AND practice_code= '$practice_code'";
+	}
+	
+	if(strlen($test_description)>0)
+	{
+		$filter.=" AND test_description like '$test_description'";
+	}
+	
+	// PRINT "SELECT test_description,dash_patient_id,test_value,date_format(result_date,'%m/%d/%Y') as result_date
+	// from BIDW.lab_and_vitals_current WHERE 1=1 ".$filter;
+	// EXIT;
+	$result = mysql_query("SELECT test_description,dash_patient_id,test_value,date_format(result_date,'%m/%d/%Y') as result_date
+	from BIDW.lab_and_vitals_current WHERE 1=1 ".$filter,$dashDB) or die ("Could not get lab data");	
+	
+	while ($row = mysql_fetch_assoc($result)) {	
+		$patient_id = $row['dash_patient_id'];		
+		$value = $row['test_value'];
+		$date = $row['result_date'];
+		
+		$lab[$patient_id][$test_name]["value"]=$value;
+		$lab[$patient_id][$test_name]["date"]=$date;
+	}
+	
+}
+
+function getComment($authorrole, $threadkey,$patient_id,$user_name) {
+	global $comments;
+	global $dashDB;
+	
+	if (count($comments) == 0) {
+		initComment();
+	}
+	
+	$id = rand(1, 10000000);
+	$result = "<div id='$id' class='comment'><input type=button class='btn btn-primary' value='Add Comment' onclick=\"addCommentHEDIS('$authorrole', '$threadkey', '$id','$patient_id','$user_name')\">";
+	
+	$threadkey=strtolower($threadkey);
+	//print $comments[$threadkey]." ".$threadkey."-------";
+	if (isset($comments[$threadkey])) {
+		$result .= "<br>".$comments[$threadkey];
+	}
+	$result .= "</div>";
+	return $result;
+}
+
+function initCallResults()
+{
+	
+	global $dashDB;	
+	global $callResultsAR;
+	global $callDataAr;
+	
+	
+	
+	$sql="select dis_key, cate,RECOVERY_DATE, REP_NAME,REFERENCE_NUM,TOUR_DATE,APPT_DATE,ENROLLMENT_DATE, PRIMARY_ISSUE_ID,comments,new_medical_center, new_insurance,new_ins_plan,
+			group_concat(issue, '|', dropdownvalue separator '@') as content
+			from
+			(
+			SELECT  t.dis_key,t.comments, concat(t.dis_category_id, '$',   c.CATEGORY_DESC) as cate,  
+			concat(l.issue_id, '$',i.issue_desc,'$',ifnull(i.parent_issue_id, 0)) as issue ,
+			CONCAT(l.issue_id, '_',ifnull(l.ISSUE_SELECTION_DATA,'0'), '_',IFNULL(l.ISSUE_SELECTION_DASH_ID,0)) AS dropdownvalue,
+			RECOVERY_DATE, REP_NAME,REFERENCE_NUM,TOUR_DATE,APPT_DATE,ENROLLMENT_DATE,PRIMARY_ISSUE_ID,new_medical_center, new_insurance,new_ins_plan
+			FROM BIDW.disenrollment_issue_lines l 
+			join BIDW.disenrollment_tracking t on t.dis_key = l.TRACKING_DIS_KEY
+			join BIDW.disenrollment_issues i on i.id = l.issue_id
+			join BIDW.disenrollment_category c on c.id = t.DIS_CATEGORY_ID and c.parent_cat_id is not null
+			) as pop
+			group by 1,2,3,4,5,6,7,8,9,10,11,12,13";
+		
+	$result=mysql_query($sql, $dashDB) or die(mysql_error());		
+	
+	while ($row = mysql_fetch_assoc($result)) {	
+		$patKey = $row['dis_key'];
+		$comments = utf8_decode($row['comments']);
+		$cat = $row['cate'];
+		$issues = $row['content'];
+		
+		$recovery = $row['RECOVERY_DATE'];
+		$rep = $row['REP_NAME'];
+		$ref = $row['REFERENCE_NUM'];
+		$tour = $row['TOUR_DATE'];
+		$appt = $row['APPT_DATE'];
+		$enroll = $row['ENROLLMENT_DATE'];
+		$primary = $row['PRIMARY_ISSUE_ID'];
+		
+		$new_center = $row['new_medical_center'];
+		$new_ins = $row['new_insurance'];
+		$new_plan = $row['new_ins_plan'];
+		
+		$callResultsAR[$patKey]["comments"]=$comments;
+		$callResultsAR[$patKey]["cate"]=$cat;
+		$callResultsAR[$patKey]["issues"]=$issues;
+		
+		$callResultsAR[$patKey]["recovery"]=$recovery;
+		$callResultsAR[$patKey]["rep"]=$rep;
+		$callResultsAR[$patKey]["ref"]=$ref;
+		$callResultsAR[$patKey]["tour"]=$tour;
+		$callResultsAR[$patKey]["appt"]=$appt;
+		$callResultsAR[$patKey]["enroll"]=$enroll;
+		$callResultsAR[$patKey]["primary"]=$primary;
+		
+		$callResultsAR[$patKey]["center"]=$new_center;
+		$callResultsAR[$patKey]["ins"]=$new_ins;
+		$callResultsAR[$patKey]["plan"]=$new_plan;
+		
+	}	
+	
+	
+	$sql="
+		select dis_key, comments, CATEGORY_DESC,RECOVERY_DATE, REP_NAME,REFERENCE_NUM,TOUR_DATE,APPT_DATE,ENROLLMENT_DATE,
+		group_concat(concat('<p>*',issue_desc, ' - ', dropdownvalue,  ' - ', child_issue, '-', childdrop,'</p>') separator '') as issues
+		from
+		(
+			SELECT  t.dis_key,
+			i.issue_desc,comments,c.CATEGORY_DESC,RECOVERY_DATE, REP_NAME,REFERENCE_NUM,TOUR_DATE,APPT_DATE,ENROLLMENT_DATE,
+			ifnull(l.ISSUE_SELECTION_DATA,'') AS dropdownvalue,ifnull(p.child_issue,'') as child_issue, ifnull(p.childdrop,'') as childdrop
+			FROM BIDW.disenrollment_issue_lines l 
+			join BIDW.disenrollment_tracking t on t.dis_key = l.TRACKING_DIS_KEY
+			join BIDW.disenrollment_issues i on i.id = l.issue_id
+			join BIDW.disenrollment_category c on c.id = t.DIS_CATEGORY_ID and c.parent_cat_id is not null
+		
+			left join (SELECT  t.dis_key,c.CATEGORY_DESC,l.issue_id,
+			ifnull(i.parent_issue_id, 0) as par,
+			i.issue_desc as child_issue,
+			l.ISSUE_SELECTION_DATA AS childdrop 
+			FROM BIDW.disenrollment_issue_lines l 
+			join BIDW.disenrollment_tracking t on t.dis_key = l.TRACKING_DIS_KEY
+			join BIDW.disenrollment_issues i on i.id = l.issue_id
+			join BIDW.disenrollment_category c on c.id = t.DIS_CATEGORY_ID and c.parent_cat_id is not null
+			) as p on p.par = l.issue_id and p.dis_key = t.dis_key
+			where i.parent_issue_id is null
+		) as pop
+		group by 1,2,3,4,5,6,7,8,9";
+		
+		$result=mysql_query($sql, $dashDB) or die(mysql_error());		
+	
+		while ($row = mysql_fetch_assoc($result)) {	
+			$callDataAr[$row['dis_key']]['issues']=$row['issues'];
+			$callDataAr[$row['dis_key']]['comments']=utf8_decode($row['comments']);
+			$callDataAr[$row['dis_key']]['cat']=$row['CATEGORY_DESC'];
+			
+			
+		}	
+	
+}
+
+function getCallResults($patient_id,$dismonth) {
+	
+	global $dashDB;
+	global $callResultsAR;
+	
+	$resultsAr = array();
+	
+	if (count($callResultsAR) == 0) {
+		initCallResults();
+	}
+	
+	$pat_key = $patient_id."_".$dismonth;
+	
+	
+	//print_r($callResultsAR[$pat_key]);
+	
+
+	if (isset($callResultsAR[$pat_key])) {
+			
+		$resultsAr = $callResultsAR[$pat_key]; 
+	}
+	
+	return $resultsAr;
+}
+
+function getCallData($patient_id,$dismonth) {
+	
+	global $dashDB;
+	global $callDataAr;
+	
+	$resultsAr = array();
+	
+	if (count($callDataAr) == 0) {
+		initCallResults();
+	}
+	
+	$pat_key = $patient_id."_".$dismonth;
+	
+	
+	//print_r($callResultsAR[$pat_key]);
+	
+
+	if (isset($callDataAr[$pat_key])) {
+			
+		$resultsAr = $callDataAr[$pat_key]; 
+	}
+	
+	return $resultsAr;
+}
+
+
+
+function getMeasurementValidation($patient_id, $measurement,$practice_code,$agent,$eligYear)
+{
+	global $validAr;	
+	
+	$id = rand(1, 1000000000);
+	$hedis_key=$patient_id."_".$measurement."_".$eligYear;
+	
+	$result= "<div id='va$id'><select class='input-small' onchange=\"addMeasurementValidation('$patient_id', '$measurement', '$eligYear','$practice_code','$agent',this)\">";		
+	#print $compliant[$patient_id.$measurement.$year]." ".$patient_id.$measurement.$year;
+	
+	$result.= "<option></option>";
+	
+	if(isset($validAr[$hedis_key])) 
+	{			
+		if(strlen($validAr[$hedis_key])<1)
+		{
+			$result.= "<option value='0'>Yes</option><option value='1'>No</option>";
+		}
+		else
+		{
+			if($validAr[$hedis_key]==1)
+			{
+				$result.= "<option value='1' SELECTED>Yes</option><option value='0'>No</option>";
+			}
+			
+			if($validAr[$hedis_key]==0)
+			{
+				$result.= "<option value='1'>Yes</option><option value='0' SELECTED>No</option>";
+			}
+		}		
+	}
+	else
+	{		
+		$result.= "<option value='1'>Yes</option><option value='0'>No</option>";
+	}
+	
+	$result.= "</select></div>";
+	
+	return $result;
+}
+
+function getCompliant($patient_id, $measurement,$practice_code,$agent,$eligYear)
+{
+	global $compliantAr;
+	
+	$id = rand(1, 1000000000);
+	$hedis_key=$patient_id."_".$measurement."_".$eligYear;
+	$result= "<div id='$id'><select class='input-small' onchange=\"addCompliant('$patient_id', '$measurement', '$eligYear','$practice_code','$agent',this)\">";		
+	#print $compliant[$patient_id.$measurement.$year]." ".$patient_id.$measurement.$year;
+	
+	$result.= "<option></option>";
+	
+	if(isset($compliantAr[$hedis_key])) 
+	{	
+		$arResult=explode("|",$compliantAr[$hedis_key]);
+		$compliant_flag=$arResult[0];
+		
+		if(strlen($compliant_flag)<1)
+		{
+			
+			$result.= "<option value='1'>Yes</option><option value='0'>No</option>";
+		}
+		else
+		{
+			
+			if($compliant_flag==1)
+			{
+				$result.= "<option value='1' SELECTED>Yes</option><option value='0'>No</option>";
+			}
+			
+			if($compliant_flag==0)
+			{
+				$result.= "<option value='1'>Yes</option><option value='0' SELECTED>No</option>";
+			}
+		}
+	}
+	else
+	{		
+		$result.= "<option value='1'>Yes</option><option value='0'>No</option>";
+	}
+	
+	$result.= "</select></div>";
+	
+	return $result;
+}
+
+function getCompliantDate($patient_id, $measurement,$practice_code,$agent,$eligYear)
+{
+	global $compliantAr;
+	
+	$id = rand(1, 100000000);
+	$hedis_key=$patient_id."_".$measurement."_".$eligYear;
+	
+	$result= "<div><input id='ec$id' class='CompliantDOS input-small' onChange=\"addValueCompliantDOSHEDIS('$patient_id', '$measurement', '$eligYear','$practice_code','$agent','ec$id')\" ";		
+	#print $compliant[$patient_id.$measurement.$year]." ".$patient_id.$measurement.$year;
+	
+	if(isset($compliantAr[$hedis_key])) 
+	{	
+		$arResult=explode("|",$compliantAr[$hedis_key]);
+		$compliant_dos=$arResult[1];
+		
+		if(strlen($compliant_dos)>1)
+		{
+			$result.= "value='".$compliant_dos."'";
+		}
+		else
+		{
+			$result.= "value=''";
+		}
+	}
+	else
+	{		
+		$result.= "value=''";
+	}
+		
+	$result.= " /></div>";
+	
+	return $result;
+}
+
+function getExtraColumn($columnkey,$measurement,$patient_id,$columnname,$eligYear)
+{
+	global $extraColumnAr;
+	
+	$id = rand(1, 10000000);
+	
+	$result= "<div ><input id='ec$id' class='smallinput' onclick=\"addValueExtraColumnHEDIS('$columnkey','$eligYear','$patient_id', '$measurement','$columnname','ec$id')\" ";			
+	
+	if(isset($extraColumnAr[$columnkey])) 
+	{	
+		$result.= "value='".$extraColumnAr[$columnkey]."'";
+	}
+	else
+	{		
+		$result.= "";
+	}
+	
+	$result.= " /></div>";
+	
+	return $result;
+}
+function getExtraColumnDropDown($columnkey,$measurement,$patient_id,$columnname,$eligYear)
+{
+	global $getExtraColumnDropDownOptions;
+	global $extraColumnAr;
+	
+	$id = rand(1, 100000000);
+	
+	$result= "<div id='dd$id'><select class='input-small' onchange=\"addValueExtraDropDownColumnHEDIS('$columnkey','$eligYear','$patient_id','$measurement','$columnname',this)\">";		
+	
+	$eval="";
+	
+	if(isset($extraColumnAr[$columnkey])) 
+	{	
+		#print "Has column_key ".$columnkey." value ".$extraColumnAr[$columnkey];
+		$eval=$extraColumnAr[$columnkey];
+	}
+	
+	$array=explode(",",$getExtraColumnDropDownOptions[$columnname]);
+	
+	foreach($array as $value)
+	{
+		#print $columnkey." column key ".$columnkey." value ".$value." his value ".$eval."<br/>";
+		if($eval==$value)
+		{
+			$result.= "<option value='$value' SELECTED>$value</option>";
+		}
+		else
+		{
+			$result.= "<option value='$value'>$value</option>";
+		}
+	}
+
+	$result.= "</select></div>";
+	
+	return $result;
+}
+function getLabValueColumn($patient_id,$test_name)
+{	
+	global $lab;
+	$id = rand(1, 10000000);
+	
+	$result= "<div>";			
+	
+	if(isset($lab[$patient_id][$test_name]["value"])) 
+	{	
+		$result.= $lab[$patient_id][$test_name]["value"];
+	}
+	else
+	{		
+		$result.= "";
+	}
+	
+	$result.= "</div>";
+	
+	return $result;
+}
+
+function getLabDateColumn($patient_id,$test_name)
+{	
+	global $lab;
+	$id = rand(1, 10000000);
+	
+	$result= "<div>";			
+	
+	if(isset($lab[$patient_id][$test_name]["date"])) 
+	{	
+		$result.= $lab[$patient_id][$test_name]["date"];
+	}
+	else
+	{		
+		$result.= "";
+	}
+	
+	$result.= "</div>";
+	
+	return $result;
+}
+function putValidation($patient_id,$eligYear,$measurement,$practice_code,$value,$agent_username) {
+	
+	global $dashDB;
+	
+	$hedis_key=$patient_id."_".$measurement."_".$eligYear;
+	
+	$result=mysql_query("SELECT id FROM BIDW.hedis_measurement_agent_override WHERE hedis_key='$hedis_key'",$dashDB);
+	$row = mysql_fetch_assoc($result);
+	
+	if($row['id']>0)
+	{	
+		if($value=="")
+		{
+			$value="NULL";
+		}
+		
+		$query="UPDATE BIDW.hedis_measurement_agent_override SET hedis_measurement_override=$value , 
+		Modification_Date=now() WHERE id='".$row['id']."' ";
+		mysql_query($query,$dashDB);		
+	}
+	else
+	{
+		$query="insert into BIDW.hedis_measurement_agent_override (dash_patient_id, hedis_measurement_code, hedis_eligible_yyyy,
+			hedis_key,agent_username,Modification_Date,hedis_measurement_override,practice_code) 
+			values ('$patient_id', '$measurement', '$eligYear','$hedis_key','$agent_username',now(),'$value','$practice_code')";
+		
+		mysql_query($query,$dashDB);				
+
+	}
+	
+	$query="DELETE FROM BIDW.hedis_measurement_agent_override WHERE hedis_measurement_override is null";
+	mysql_query($query,$dashDB);
+		
+	#return $result;
+}
+
+
+
+function putCompliant($patient_id,$eligYear, $measurement,$practice_code,$value,$agent_username) {
+	
+	global $dashDB;
+	
+	$hedis_key=$patient_id."_".$measurement."_".$eligYear;
+	
+	$result=mysql_query("SELECT id FROM BIDW.hedis_agent_measurement_compliant WHERE hedis_key='$hedis_key'",$dashDB);
+	$row = mysql_fetch_assoc($result);
+	
+	if($row['id']>0)
+	{	
+		if($value=="")
+		{
+			$value="NULL";
+		}
+		
+		$query="UPDATE BIDW.hedis_agent_measurement_compliant SET hedis_Agent_Compliant_Flag=$value , practice_code='".$practice_code."',
+		Modification_Date=now() WHERE id='".$row['id']."' ";				
+		mysql_query($query,$dashDB);
+		
+		$query="DELETE FROM BIDW.hedis_agent_measurement_compliant WHERE id='".$row['id']."' 
+		AND hedis_Agent_Compliant_DOS is null and hedis_Agent_Compliant_Flag is null";
+		mysql_query($query,$dashDB);
+	}
+	else
+	{
+		$query="insert into BIDW.hedis_agent_measurement_compliant (dash_patient_id, hedis_measurement_code, hedis_eligible_yyyy,
+			hedis_key,agent_username,Modification_Date,hedis_agent_compliant_flag,practice_code) 
+			values ('$patient_id', '$measurement', '$eligYear','$hedis_key','$agent_username',now(),'$value','$practice_code')";
+			
+		mysql_query($query,$dashDB);				
+
+	}
+	echo $query;
+	#return $result;
+}
+
+
+
+
+
+function putDOS($measurement,$eligYear, $dos, $patient_id,$practice_code,$agent_username) {
+
+	global $dashDB;
+	
+	
+	$hedis_key=$patient_id."_".$measurement."_".$eligYear;
+	
+	$result=mysql_query("SELECT id FROM BIDW.hedis_agent_measurement_compliant WHERE hedis_key='$hedis_key'",$dashDB); 
+	
+	$row = mysql_fetch_assoc($result);
+	
+	if($row['id']>0)
+	{	
+		if($dos=="")
+		{
+			$dos="NULL";
+		}
+		else
+		{
+			$dos="'$dos'";
+		}
+		
+		$query="UPDATE BIDW.hedis_agent_measurement_compliant SET hedis_Agent_Compliant_DOS=$dos, practice_code='".$practice_code."',
+		Modification_Date=now() WHERE id='".$row['id']."' ";
+		mysql_query($query,$dashDB);
+		
+		$query="DELETE FROM BIDW.hedis_agent_measurement_compliant WHERE id='".$row['id']."' 
+		AND hedis_Agent_Compliant_DOS is null and hedis_Agent_Compliant_Flag is null";
+		mysql_query($query,$dashDB);
+	}
+	else
+	{
+		$query="insert into BIDW.hedis_agent_measurement_compliant (dash_patient_id, hedis_measurement_code, hedis_eligible_yyyy,
+			hedis_key,agent_username,Modification_Date,hedis_agent_compliant_dos,practice_code) 
+			values ('$patient_id', '$measurement', '$eligYear','$hedis_key','$agent_username',now(),'$dos','$practice_code')";
+		mysql_query($query,$dashDB);
+	}
+	
+}
+
+
+function putComment($patient_id,$user_name,$authorrole, $threadkey, $comment) {
+	global $dashDB;
+	global $application;
+	mysql_query("insert into BIDW.`messages` (author_role, thread_key, application,patient_id,user_name,comment,time_stamp, User_ID, Message_Type) values 
+	('$authorrole', '$threadkey', '$application', '$patient_id', '$user_name', '$comment', now(), null,'COMMENT')",$dashDB);
+}
+
+function putValue($columnkey,$eligYear, $value,$column_name,$patient_id,$measurement) {
+	global $dashDB;
+	
+	$hedis_key=$patient_id."_".$measurement."_".$eligYear;
+	
+	$result=mysql_query("SELECT id FROM BIDW.hedis_extra_columns WHERE hedis_column_key='$columnkey' and hedis_eligible_yyyy='$eligYear'",$dashDB); 
+	
+	$row = mysql_fetch_assoc($result);
+	
+	if($row['id']>0)
+	{
+		mysql_query("UPDATE BIDW.hedis_extra_columns SET hedis_column_value='$value' , entered_date=now() WHERE id=".$row['id'],$dashDB);
+		
+	}
+	else
+	{
+		mysql_query("insert into BIDW.hedis_extra_columns (hedis_Column_Key, hedis_Column_Name,hedis_Column_Value,
+		dash_Patient_ID,hedis_Measurement_Code,entered_Date,hedis_eligible_yyyy,hedis_Key) 
+		Values ('$columnkey', '$column_name', '$value','$patient_id','$measurement',now(),'$eligYear','$hedis_key')",$dashDB);
+		echo "insert into BIDW.hedis_extra_columns (hedis_Column_Key, hedis_Column_Name,hedis_Column_Value,
+		dash_Patient_ID,hedis_Measurement_Code,entered_Date,hedis_eligible_yyyy,hedis_Key) 
+		Values ('$columnkey', '$column_name', '$value','$patient_id','$measurement',now(),'$eligYear','$hedis_key')";
+	}
+}
+
+if (isset($_REQUEST['action']) && $_REQUEST['action'] == "addComment") {
+
+	$authorrole = mysql_real_escape_string($_REQUEST['authorrole']);
+	$threadkey = mysql_real_escape_string($_REQUEST['threadkey']);
+	$cmt = mysql_real_escape_string($_REQUEST['cmt']);
+	$patient_id = mysql_real_escape_string($_REQUEST['patient_id']);
+	$user_name = mysql_real_escape_string($_REQUEST['user_name']);
+	
+	putComment($patient_id,$user_name,$authorrole, $threadkey, $cmt);
+	echo date('Y-m-d') . ": " . $cmt;
+}
+if (isset($_REQUEST['action']) && $_REQUEST['action'] == "addValue") {
+
+	$diskey = mysql_real_escape_string($_REQUEST['diskey']);	
+	$value = mysql_real_escape_string($_REQUEST['value']);
+	
+	
+	saveDropDown($diskey,$value);
+	
+	echo $value;		
+}
+if (isset($_REQUEST['action']) && $_REQUEST['action'] == "addDOS") {
+
+	$measurement = mysql_real_escape_string($_REQUEST['measurement']);	
+	$dos = mysql_real_escape_string($_REQUEST['dos']);
+	$patient_id = mysql_real_escape_string($_REQUEST['mrnumber']);
+	$practice_code = mysql_real_escape_string($_REQUEST['practice_code']);
+	$agent_username = mysql_real_escape_string($_REQUEST['agent_username']);
+	$year =mysql_real_escape_string($_REQUEST['year']);
+	
+	putDOS($measurement,$year, $dos,$patient_id,$practice_code,$agent_username);
+}
+if (isset($_REQUEST['action']) && $_REQUEST['action'] == "addCompliant") {
+
+	$patient_id = mysql_real_escape_string($_REQUEST['patient_id']);
+	$measurement = mysql_real_escape_string($_REQUEST['measurement']);
+	$practice_code = mysql_real_escape_string($_REQUEST['practice_code']);
+	$value = mysql_real_escape_string($_REQUEST['val']);
+	$agent_username = mysql_real_escape_string($_REQUEST['agent_username']);
+	$year =mysql_real_escape_string($_REQUEST['year']);	
+	
+	putCompliant($patient_id,$year, $measurement, $practice_code,$value,$agent_username);	
+	// exit();
+}
+
+if (isset($_REQUEST['action']) && $_REQUEST['action'] == "addMeasurementValidation") {
+
+	$patient_id = mysql_real_escape_string($_REQUEST['patient_id']);
+	$measurement = mysql_real_escape_string($_REQUEST['measurement']);
+	$practice_code = mysql_real_escape_string($_REQUEST['practice_code']);
+	$value = mysql_real_escape_string($_REQUEST['val']);
+	$agent_username = mysql_real_escape_string($_REQUEST['agent_username']);
+	$year =mysql_real_escape_string($_REQUEST['year']);
+	
+	putValidation($patient_id,$year, $measurement, $practice_code,$value,$agent_username);	
+}
+?>
